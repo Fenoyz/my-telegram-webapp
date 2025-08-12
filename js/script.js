@@ -109,7 +109,7 @@ const timeframeTranslations = {
         H1: "H1",
         H4: "H4",
         // Добавьте другие таймфреймы по мере необходимости
-    }
+    },
 };
 
 // --- Исправленная функция для создания/обновления кастомного селекта ---
@@ -1123,17 +1123,14 @@ document.addEventListener("DOMContentLoaded", function () {
             clearTimeout(chartAnimationTimeout);
             chartAnimationTimeout = null;
         }
-
         // --- МОДИФИКАЦИЯ 1: Получить выбранную пару ---
         const currencySelect = document.getElementById("currency-pair");
         const selectedPair = currencySelect ? currencySelect.value : "EUR/USD"; // По умолчанию, если не найдено
-
         // --- МОДИФИКАЦИЯ 2: Рассчитать реальный диапазон цен ---
         const { minPrice, maxPrice } = calculateRealPriceRange(selectedPair);
         const priceRange = maxPrice - minPrice;
         // --- Сохраняем диапазон цен для оси Y ---
         currentChartPriceRange = { minPrice, maxPrice }; // Можно убрать, если используем calculateRealPriceRange напрямую
-
         // --- Получаем контейнер оси Y ---
         const yAxisContainer = document.getElementById("y-axis");
         if (yAxisContainer) {
@@ -1145,7 +1142,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 selectedPair,
             ); // Вызов новой функции
         }
-
         // --- ИЗМЕНЕННЫЕ параметры графика ---
         const candleCount = 20; // Увеличено количество свечей (было 15)
         const candleWidth = 8; // Уменьшена ширина свечи (было 20)
@@ -1155,22 +1151,34 @@ document.addEventListener("DOMContentLoaded", function () {
         const params = pairParameters[selectedPair] || pairParameters.DEFAULT;
         const basePrice = params.basePrice;
         const startPrice = basePrice; // Начинаем с базовой цены пары
-
         let endPrice;
+
         // Определяем конечную цену с большим размахом в зависимости от сигнала
         // --- МОДИФИКАЦИЯ 5: Рассчитать движение в реальных пунктах ---
         const pipSize = isJpyPair(selectedPair) ? 0.01 : 0.0001;
         const requiredMovePips = 40 + Math.random() * 20; // Требуемое движение: от 40 до 60 пунктов
         const requiredMovePrice = requiredMovePips * pipSize; // Переводим в цену
 
-        if (signalType === "BUY") {
+        // --- ИСПРАВЛЕНИЕ ЛОГИКИ НАПРАВЛЕНИЯ ---
+        // Проверяем текст сигнала (уже переведённый) для определения направления
+        // Предполагаем, что signalType содержит текст "BUY"/"SELL" или "КУПИТЬ"/"ПРОДАТЬ"
+        // Для надёжности можно передавать тип сигнала отдельно или использовать флаги
+        // Здесь предполагаем, что signalType передаётся как "BUY" или "SELL" (оригинальный тип)
+        if (
+            signalType === "BUY" ||
+            signalType.includes("BUY") ||
+            signalType.includes("КУПИТЬ") ||
+            signalType.includes("⬆")
+        ) {
             // Для BUY конечная цена должна быть значительно выше начальной
             endPrice = startPrice + requiredMovePrice;
         } else {
-            // SELL
+            // Предполагаем SELL по умолчанию
             // Для SELL конечная цена должна быть значительно ниже начальной
             endPrice = startPrice - requiredMovePrice;
         }
+        // --- КОНЕЦ ИСПРАВЛЕНИЯ ---
+
         // Ограничиваем конечную цену в пределах расширенного диапазона
         endPrice = Math.max(minPrice, Math.min(maxPrice, endPrice));
 
@@ -1242,7 +1250,6 @@ document.addEventListener("DOMContentLoaded", function () {
         const totalCandlesWidth = candleCount * candleWidth;
         let candleSpacing;
         let leftOffset = horizontalPadding; // <-- Начинаем с левого отступа
-
         if (totalCandlesWidth <= availableWidthForCandles && candleCount > 1) {
             // Если все свечи помещаются в доступную ширину, рассчитываем равномерное расстояние между ними
             // Общее пространство для интервалов = доступная ширина - общая ширина свечей
@@ -1283,6 +1290,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // --- Установка минимальной высоты тела свечи ---
         const MIN_BODY_HEIGHT = 3; // Минимальная высота тела свечи в пикселях
+
         // Рисуем свечи с анимацией
         let index = 0;
         const drawNextCandle = () => {
@@ -1301,11 +1309,12 @@ document.addEventListener("DOMContentLoaded", function () {
             const candleElement = document.createElement("div");
             candleElement.classList.add("candlestick");
             candleElement.style.position = "absolute"; // Абсолютное позиционирование внутри контейнера графика
+
             // Определяем цвет свечи
             const isGreen = candle.close > candle.open;
             const candleColor = isGreen
-                ? "rgba(39, 174, 96, 0.9)"
-                : "rgba(192, 57, 43, 0.9)";
+                ? "rgba(39, 174, 96, 0.9)" // Зелёный для роста
+                : "rgba(192, 57, 43, 0.9)"; // Красный для падения
             candleElement.classList.add(
                 isGreen ? "green-candle" : "red-candle",
             );
@@ -1351,6 +1360,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 wickTop.style.height = `${wickTopHeight}px`;
                 candleElement.appendChild(wickTop);
             }
+
             // --- Нижняя тень ---
             const wickBottom = document.createElement("div");
             wickBottom.classList.add("wick");
@@ -1371,10 +1381,12 @@ document.addEventListener("DOMContentLoaded", function () {
             }
 
             container.appendChild(candleElement);
+
             // --- Анимация появления свечи ---
             setTimeout(() => {
                 candleElement.classList.add("animate-in");
             }, 10);
+
             index++;
             // --- ЗАМЕДЛЕННАЯ анимация ---
             chartAnimationTimeout = setTimeout(
@@ -1382,9 +1394,11 @@ document.addEventListener("DOMContentLoaded", function () {
                 window.currentAnimationDelay || 300,
             ); // Используем динамическую задержку
         };
+
         // Начать рисование с первой свечи
         drawNextCandle();
     }
+    // --- Конец обновленной функции createAnimatedCandlestickChart ---
     // --- Конец обновленной функции createAnimatedCandlestickChart ---
     // - НОВАЯ ФУНКЦИЯ: Обновить ось Y с реальными ценами и добавить линии от границы -
     function updateYAxisWithRealPrices(
@@ -1574,136 +1588,135 @@ document.addEventListener("DOMContentLoaded", function () {
     // - КОНЕЦ НОВОЙ ФУНКЦИИ -
     // --- Назначить обработчик кнопки ---
     getSignalBtn.addEventListener("click", getSignal);
-// - Обновленная функция startCooldown с динамическим временем в зависимости от таймфрейма и управлением прогресс-баром -
-function startCooldown() {
-    const activeTab = document.querySelector(".market-tab.active");
-    const marketType = activeTab ? activeTab.dataset.market : "standard";
-    const timeframeSelect = document.getElementById("timeframe");
-    const selectedTimeframe = timeframeSelect?.value || "M1";
+    // - Обновленная функция startCooldown с динамическим временем в зависимости от таймфрейма и управлением прогресс-баром -
+    function startCooldown() {
+        const activeTab = document.querySelector(".market-tab.active");
+        const marketType = activeTab ? activeTab.dataset.market : "standard";
+        const timeframeSelect = document.getElementById("timeframe");
+        const selectedTimeframe = timeframeSelect?.value || "M1";
 
-    // Определяем длительность таймера по таймфрейму
-    let timerDuration = 60; // По умолчанию 60 секунд
-    if (selectedTimeframe === "S5") {
-        timerDuration = 5;
-    } else if (selectedTimeframe === "S15") {
-        timerDuration = 15;
-    } else if (selectedTimeframe === "S30") {
-        timerDuration = 30;
-    }
-    // Все остальные (M1, M3, H1 и т.д.) — 60 секунд по умолчанию
-
-    const currentState = timerStates[marketType] || timerStates["standard"];
-    const getSignalBtn = document.getElementById("get-signal-btn");
-    const signalText =
-        translations[getCurrentLanguage()]?.get_signal ||
-        translations["en"]?.get_signal ||
-        "Get Signal";
-
-    // --- НОВОЕ: Получаем элементы прогресс-бара ---
-    const progressBarContainer = document.getElementById(
-        "signal-progress-container",
-    );
-    const progressBarFill = document.getElementById(
-        "signal-progress-bar-fill",
-    );
-    const progressTimerDisplay = document.getElementById(
-        "signal-progress-timer",
-    );
-    const progressLabel = document.getElementById("signal-progress-label");
-    // --- КОНЕЦ НОВОГО ---
-
-    // Очищаем предыдущий таймер
-    if (currentState.timerId) {
-        clearInterval(currentState.timerId);
-    }
-    let seconds = timerDuration;
-    currentState.secondsLeft = seconds;
-
-    // Обновляем нижний таймер (делаем пустым)
-    updateBottomTimerDisplay(marketType);
-
-    // Блокируем кнопку и показываем таймер
-    if (getSignalBtn) {
-        getSignalBtn.disabled = true;
-        getSignalBtn.textContent = formatTime(seconds); // <-- Исправлено: форматируем seconds до запуска таймера
-        // Убедимся, что анимация остановлена при запуске таймера
-        getSignalBtn.classList.remove("analyzing");
-    }
-
-    // --- НОВОЕ: Показываем и инициализируем прогресс-бар ---
-    if (progressBarContainer && progressBarFill && progressTimerDisplay) {
-        // Сбрасываем прогресс-бар
-        progressBarFill.style.width = "100%";
-        progressTimerDisplay.textContent = formatTime(seconds); // <-- Исправлено: форматируем seconds
-        // Показываем контейнер с анимацией
-        progressBarContainer.classList.add("show");
-        progressBarContainer.style.display = "block";
-    }
-    // --- КОНЕЦ НОВОГО ---
-
-    // Запускаем таймер
-    const timerId = setInterval(() => {
-        const currentActiveTab =
-            document.querySelector(".market-tab.active");
-        const currentMarketType = currentActiveTab
-            ? currentActiveTab.dataset.market
-            : "standard";
-
-        // --- Исправлено: Проверка и остановка до уменьшения seconds ---
-        if (seconds <= 0) {
-            clearInterval(timerId);
-            currentState.timerId = null;
-            currentState.secondsLeft = timerDuration;
-            if (getSignalBtn && currentMarketType === marketType) {
-                getSignalBtn.disabled = false;
-                getSignalBtn.textContent = signalText;
-                 // Убедимся, что анимация не запущена при завершении
-                getSignalBtn.classList.remove("analyzing");
-            }
-            // --- НОВОЕ: Скрываем прогресс-бар ---
-            if (progressBarContainer) {
-                // Начинаем скрывать анимацию
-                progressBarContainer.classList.remove("show");
-                // Ждем окончания анимации, затем скрываем полностью
-                setTimeout(() => {
-                    if (!progressBarContainer.classList.contains("show")) {
-                        progressBarContainer.style.display = "none";
-                    }
-                }, 300); // Должно совпадать с длительностью transition в CSS
-            }
-            // --- КОНЕЦ НОВОГО ---
-            // После завершения таймера — снова обновляем нижний таймер (чтобы был пустым)
-            updateBottomTimerDisplay(marketType);
-            return; // Выходим из интервала
+        // Определяем длительность таймера по таймфрейму
+        let timerDuration = 60; // По умолчанию 60 секунд
+        if (selectedTimeframe === "S5") {
+            timerDuration = 5;
+        } else if (selectedTimeframe === "S15") {
+            timerDuration = 15;
+        } else if (selectedTimeframe === "S30") {
+            timerDuration = 30;
         }
-        // --- Конец исправления ---
-        seconds--;
+        // Все остальные (M1, M3, H1 и т.д.) — 60 секунд по умолчанию
+
+        const currentState = timerStates[marketType] || timerStates["standard"];
+        const getSignalBtn = document.getElementById("get-signal-btn");
+        const signalText =
+            translations[getCurrentLanguage()]?.get_signal ||
+            translations["en"]?.get_signal ||
+            "Get Signal";
+
+        // --- НОВОЕ: Получаем элементы прогресс-бара ---
+        const progressBarContainer = document.getElementById(
+            "signal-progress-container",
+        );
+        const progressBarFill = document.getElementById(
+            "signal-progress-bar-fill",
+        );
+        const progressTimerDisplay = document.getElementById(
+            "signal-progress-timer",
+        );
+        const progressLabel = document.getElementById("signal-progress-label");
+        // --- КОНЕЦ НОВОГО ---
+
+        // Очищаем предыдущий таймер
+        if (currentState.timerId) {
+            clearInterval(currentState.timerId);
+        }
+        let seconds = timerDuration;
         currentState.secondsLeft = seconds;
-        if (getSignalBtn && currentMarketType === marketType) {
-            getSignalBtn.textContent = formatTime(seconds);
-            // Убедимся, что анимация не запущена во время таймера
+
+        // Обновляем нижний таймер (делаем пустым)
+        updateBottomTimerDisplay(marketType);
+
+        // Блокируем кнопку и показываем таймер
+        if (getSignalBtn) {
+            getSignalBtn.disabled = true;
+            getSignalBtn.textContent = formatTime(seconds); // <-- Исправлено: форматируем seconds до запуска таймера
+            // Убедимся, что анимация остановлена при запуске таймера
             getSignalBtn.classList.remove("analyzing");
         }
-        // --- НОВОЕ: Обновляем прогресс-бар ---
-        if (
-            progressBarContainer &&
-            progressBarFill &&
-            progressTimerDisplay &&
-            currentMarketType === marketType
-        ) {
-            progressTimerDisplay.textContent = formatTime(seconds);
-            // Рассчитываем процент оставшегося времени
-            const progressPercent = (seconds / timerDuration) * 100;
-            // Обновляем ширину полосы прогресса
-            progressBarFill.style.width = `${progressPercent}%`;
+
+        // --- НОВОЕ: Показываем и инициализируем прогресс-бар ---
+        if (progressBarContainer && progressBarFill && progressTimerDisplay) {
+            // Сбрасываем прогресс-бар
+            progressBarFill.style.width = "100%";
+            progressTimerDisplay.textContent = formatTime(seconds); // <-- Исправлено: форматируем seconds
+            // Показываем контейнер с анимацией
+            progressBarContainer.classList.add("show");
+            progressBarContainer.style.display = "block";
         }
         // --- КОНЕЦ НОВОГО ---
 
-    }, 1000);
+        // Запускаем таймер
+        const timerId = setInterval(() => {
+            const currentActiveTab =
+                document.querySelector(".market-tab.active");
+            const currentMarketType = currentActiveTab
+                ? currentActiveTab.dataset.market
+                : "standard";
 
-    // Сохраняем ID таймера
-    currentState.timerId = timerId;
-}
+            // --- Исправлено: Проверка и остановка до уменьшения seconds ---
+            if (seconds <= 0) {
+                clearInterval(timerId);
+                currentState.timerId = null;
+                currentState.secondsLeft = timerDuration;
+                if (getSignalBtn && currentMarketType === marketType) {
+                    getSignalBtn.disabled = false;
+                    getSignalBtn.textContent = signalText;
+                    // Убедимся, что анимация не запущена при завершении
+                    getSignalBtn.classList.remove("analyzing");
+                }
+                // --- НОВОЕ: Скрываем прогресс-бар ---
+                if (progressBarContainer) {
+                    // Начинаем скрывать анимацию
+                    progressBarContainer.classList.remove("show");
+                    // Ждем окончания анимации, затем скрываем полностью
+                    setTimeout(() => {
+                        if (!progressBarContainer.classList.contains("show")) {
+                            progressBarContainer.style.display = "none";
+                        }
+                    }, 300); // Должно совпадать с длительностью transition в CSS
+                }
+                // --- КОНЕЦ НОВОГО ---
+                // После завершения таймера — снова обновляем нижний таймер (чтобы был пустым)
+                updateBottomTimerDisplay(marketType);
+                return; // Выходим из интервала
+            }
+            // --- Конец исправления ---
+            seconds--;
+            currentState.secondsLeft = seconds;
+            if (getSignalBtn && currentMarketType === marketType) {
+                getSignalBtn.textContent = formatTime(seconds);
+                // Убедимся, что анимация не запущена во время таймера
+                getSignalBtn.classList.remove("analyzing");
+            }
+            // --- НОВОЕ: Обновляем прогресс-бар ---
+            if (
+                progressBarContainer &&
+                progressBarFill &&
+                progressTimerDisplay &&
+                currentMarketType === marketType
+            ) {
+                progressTimerDisplay.textContent = formatTime(seconds);
+                // Рассчитываем процент оставшегося времени
+                const progressPercent = (seconds / timerDuration) * 100;
+                // Обновляем ширину полосы прогресса
+                progressBarFill.style.width = `${progressPercent}%`;
+            }
+            // --- КОНЕЦ НОВОГО ---
+        }, 1000);
+
+        // Сохраняем ID таймера
+        currentState.timerId = timerId;
+    }
     // --- Вспомогательная функция для форматирования времени ---
     function formatTime(seconds) {
         const mins = Math.floor(seconds / 60);
